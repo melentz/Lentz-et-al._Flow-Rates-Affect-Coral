@@ -1,0 +1,332 @@
+---
+title: "Flow data processing"
+author: "Miranda Lentz and Evan Freel"
+date: March 26, 2023
+output: html_document
+---
+
+# SETUP 
+##Libraries
+```{r, Libraries}
+# Defining packages desired
+dependencies <- c("tidyverse","mosaic","openintro","ggformula","infer","gridExtra","cowplot","ggpubr","here","mgcv","Cairo","viridis","readr")
+
+# Checking if packages are installed - load if so, install+load if not
+for (i in dependencies) {
+  if (i %in% row.names(installed.packages())){
+    eval(bquote(library(.(i))))
+    message(paste("loaded package",i))
+    }  else {
+    install.packages(i)
+    eval(bquote(library(.(i))))
+  }
+}
+```
+
+##Datasets
+```{r, Datasets}
+# Load in datasets
+
+Flow2018 <- read_csv("Data/Fig1_Flow2018.csv")
+
+Flow2019 <- read_csv("Data/Fig2_Flow2019.csv")
+
+ColonyFigure <- read_csv("Data/Fig3_ColonyFigure.csv", 
+    col_types = cols(Flow = col_factor(levels = c("0 tph", 
+        "4 tph", "30 tph", "105 tph", "210 tph"))))
+
+KCSDif <- read_csv("Data/Fig4a_KoaCardScoreDif.csv")
+
+KCSWeek <- read_csv("Data/Fig4b_KoaCardScoreWeek.csv",
+    na = "NA")
+
+KCSSurvival <- read_csv("Data/Fig4c_KoaCardScoreSurvival.csv")
+
+TankTemp <- read_csv("Data/TankTemp.csv")
+```
+
+# FLOW RATE DATA 
+## Figures: 2018 - Box & Whisker plot
+```{r, 2018 Figure}
+#2018 data: 0, 50, 100, 190, 330 tph
+
+Flow.bar.2018 <- ggplot(Flow2018, aes(x = Species, y = Mass.PerInc, color = fct_relevel(Flow, "0 tph", "50 tph", "100 tph", "190 tph", "330 tph"))) +
+  geom_boxplot() + 
+  ylab("Percent Mass Increase") +
+  scale_x_discrete(limits = c("M.capitata", "P.acuta", "P.compressa")) + 
+  labs(color = "Flow Rate") +
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+Flow.bar.2018
+```
+
+## Figures: 2019 - Box & Whisker plot w/ Tukey values
+```{r, 2019 Figure}
+#2019 data: 0, 4, 30, 105, 210 tph
+
+Flow.bar.2019.Tukey <- ggplot(Flow2019, aes(x = Species, y = Mass.PerInc08, color = fct_relevel(Flow, "0 tph", "4 tph", "30 tph", "105 tph","210 tph"))) +
+  geom_boxplot() + 
+  ylab("Percent Mass Increase") +
+  scale_x_discrete(limits = c("M.capitata", "P.acuta", "P.meandrina")) +
+  labs(color="Flow Rate") + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE) + 
+  annotate("text", x = 1.97, y = 19, label = "a", hjust = 0) + 
+  annotate("text", x = 2.12, y = 17.3, label = "b", hjust = 0) + 
+  annotate("text", x = 2.25, y = 12, label = "ab", hjust = 0)
+Flow.bar.2019.Tukey
+```
+
+## Statistics: 2018 - ANOVA & Tukey HSD
+```{r, 2018 Statistics}
+flow.MC2018 <- Flow2018 %>% filter(Species == "M.capitata")
+flow.PC2018 <- Flow2018 %>% filter(Species == "P.compressa")
+flow.PA2018 <- Flow2018 %>% filter(Species == "P.acuta")
+
+MC.anova2018 <- aov(Mass.PerInc~as.factor(Flow.tph), data = flow.MC2018)
+summary(MC.anova2018)
+TukeyHSD(MC.anova2018)
+
+PC.anova2018 <- aov(Mass.PerInc~as.factor(Flow.tph), data = flow.PC2018)
+summary(PC.anova2018)
+TukeyHSD(PC.anova2018)
+
+PA.anova2018 <- aov(Mass.PerInc~as.factor(Flow.tph), data = flow.PA2018)
+summary(PA.anova2018)
+TukeyHSD(PA.anova2018)
+```
+
+## Statistics: 2019 - ANOVA & Tukey HSD
+```{r, 2019 Statistics}
+flow.MC2019 <- Flow2019 %>% filter(Species == "M.capitata")
+flow.PA2019 <- Flow2019 %>% filter(Species == "P.acuta")
+flow.PM2019 <- Flow2019 %>% filter(Species == "P.meandrina")
+
+MC.anova2019 <- aov(Mass.PerInc08~as.factor(Flow), data = flow.MC2019)
+summary(MC.anova2019)
+TukeyHSD(MC.anova2019)
+
+PA.anova2019 <- aov(Mass.PerInc08~as.factor(Flow), data = flow.PA2019)
+summary(PA.anova2019)
+TukeyHSD(PA.anova2019)
+
+PM.anova2019 <- aov(Mass.PerInc08~as.factor(Flow), data = flow.PM2019)
+summary(PM.anova2019)
+TukeyHSD(PM.anova2019)
+```
+
+# TEMPERATURE DATA 
+```{r, Temperature Statistics}
+t.test(TankTemp$Corrected.Temp.Mid, TankTemp$Temp.Edge, var.equal=FALSE)
+```
+
+# COLONY DATA 
+```{r, Colony Figure}
+# Actively re-level Colony numbers so no auto-ordering confusion in figures
+ColonyFigure$Colony <- factor(ColonyFigure$Colony, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
+
+# Separate larger dataset into M.capitata, P.acuta, and P.meandrina data
+col.MC2019 <- ColonyFigure %>% filter(Species == "M.capitata")
+col.PA2019 <- ColonyFigure %>% filter(Species == "P.acuta")
+col.PM2019 <- ColonyFigure %>% filter(Species == "P.meandrina")
+
+MC.Col.stdev <- col.MC2019 %>% ggplot() +
+  geom_point(aes(x = Flow, y = Ave.Mass.PerInc, group = Colony, color = Colony, shape = Colony), size = 2.5, show.legend = TRUE, position = position_dodge(width = 0.2)) + 
+  geom_line(aes(x = Flow, y = Ave.Mass.PerInc, group = Colony, color = Colony), size = 1, show.legend = FALSE) +
+  scale_shape_manual(values = c(16, 15, 17, 18)) +
+  geom_errorbar(aes(Flow, ymin = Ave.Mass.PerInc-Stdev.Aves, ymax = Ave.Mass.PerInc+Stdev.Aves, color = Colony),
+                width = 0.5,  position = position_dodge(width = 0.2)) + 
+  scale_linetype_manual(values = "solid") + theme_bw() + 
+  geom_line(data = (col.MC2019 %>% group_by(Flow, Species) %>% summarize(spp.mean = mean(Ave.Mass.PerInc))), aes(x = Flow, y = spp.mean, group = Species), size = 1.5, show.legend = F, linetype = 'dashed') + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    x = "Flow",
+    y = "Ave Mass \n % Increase",
+    title = expression(italic("M. capitata")))
+MC.Col.stdev
+
+PA.Col.stdev <- col.PA2019 %>%  ggplot() +
+  geom_point(aes(x = Flow, y = Ave.Mass.PerInc, group = Colony, color = Colony, shape = Colony), size = 2.5, show.legend = TRUE, position = position_dodge(width = 0.2)) + 
+  geom_line(aes(x = Flow, y = Ave.Mass.PerInc, group = Colony, color = Colony), size = 1, show.legend = FALSE) +
+  scale_shape_manual(values = c(16, 15, 17, 18)) +
+  geom_errorbar(aes(Flow, ymin = Ave.Mass.PerInc-Stdev.Aves, ymax = Ave.Mass.PerInc+Stdev.Aves, color = Colony),
+                width = 0.5,  position = position_dodge(width = 0.2)) + 
+  scale_linetype_manual(values = "solid") + theme_bw() + 
+  geom_line(data = (col.PA2019 %>% group_by(Flow, Species) %>% summarize(spp.mean = mean(Ave.Mass.PerInc))), aes(x = Flow, y = spp.mean, group = Species), size = 1.5, show.legend = F, linetype = 'dashed') + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    x = "Flow",
+    y = "Ave Mass \n % Increase",
+    title = expression(italic("P. acuta")))
+PA.Col.stdev
+
+PM.Col.stdev <- col.PM2019 %>%  ggplot() +
+  geom_point(aes(x = Flow, y = Ave.Mass.PerInc, group = Colony, color = Colony, shape = Colony), size = 2.5, show.legend = TRUE, position = position_dodge(width = 0.2)) + 
+  geom_line(aes(x = Flow, y = Ave.Mass.PerInc, group = Colony, color = Colony), size = 1, show.legend = FALSE) +
+  scale_shape_manual(values = c(16, 15, 17, 18)) +
+  geom_errorbar(aes(Flow, ymin = Ave.Mass.PerInc-Stdev.Aves, ymax = Ave.Mass.PerInc+Stdev.Aves, color = Colony),
+                width = 0.5,  position = position_dodge(width = 0.2)) + 
+  scale_linetype_manual(values = "solid") + theme_bw() + 
+  geom_line(data = (col.PM2019 %>% group_by(Flow, Species) %>% summarize(spp.mean = mean(Ave.Mass.PerInc))), aes(x = Flow, y = spp.mean, group = Species), size = 1.5, show.legend = F, linetype = 'dashed') + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    x = "Flow",
+    y = "Ave Mass \n % Increase",
+    title = expression(italic("P. meandrina")))
+PM.Col.stdev
+
+# Combine individual species figures into one
+Full.Colony.line <- grid.arrange(MC.Col.stdev, PA.Col.stdev, PM.Col.stdev, ncol=1)
+Full.Colony.line
+```
+
+# BLEACHING DATA 
+## KCS change cumulative - Fig 4a
+```{r, Bleaching Figure a}
+# Have to change spacing in line 196 depending on the desired final figure size...not optimized but works.
+
+Ave.KCS.SampleSize <- ggplot(KCSDif, aes(x = Species, y = Score.Difference, fill = fct_relevel(Flow, "0 tph", "4 tph", "30 tph", "105 tph", "210 tph"))) +
+  geom_col(position="dodge") + 
+  ylab("\u394KCS") +
+  scale_x_discrete(limits = c("M.capitata", "P.acuta", "P.meandrina")) + 
+  labs(fill="Flow Rate") +
+  annotate("text", x = 0.6, y = 0.55, label = "8      3      9     5     5         11    7     12    10   10       1      2      0     0     1", hjust = 0) + 
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis(discrete = TRUE, direction = -1)
+Ave.KCS.SampleSize
+```
+
+## KCS change per week - Fig 4b
+```{r, Bleaching Figure b}
+# Actively re-level Flow categories so no auto-ordering confusion in figures
+KCSWeek$Flow <- factor(KCSWeek$Flow, levels = c("0 tph", "4 tph", "30 tph", "105 tph", "210 tph"))
+
+MC.KCS <- KCSWeek %>% 
+  filter(Species == "M.capitata") %>%
+  ggplot(aes(x = Week, y = Score)) +
+  ggtitle("M. capitata") + 
+  theme(plot.title = element_text(hjust = 0.5, face = "italic", size = 12)) + 
+  theme(axis.title.x = element_text(size = 11)) + 
+  ylab("KCS") +
+  geom_point(aes(color = Flow, shape = Flow), size = 2.5) + 
+  geom_line(aes(color = Flow)) +
+  expand_limits(y = c(19,27), x = c(8,23)) +
+  scale_x_continuous(breaks = round(seq(min(KCSWeek$Week), max(KCSWeek$Week), by = 2),1)) +
+  scale_y_continuous(breaks = round(seq(min(19), max(27), by = 1),1)) +
+  theme(legend.position = "none") + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+MC.KCS
+
+PA.KCS <- KCSWeek %>% 
+  filter(Species == "P.acuta") %>%
+  ggplot(aes(x = Week, y = Score)) + 
+  ggtitle("P. acuta") + 
+  theme(plot.title = element_text(hjust = 0.5, face = "italic", size = 12)) + 
+  theme(axis.title.x = element_text(size = 11)) + 
+  ylab("KCS") +
+  geom_point(aes(color = Flow, shape = Flow), size = 2.5) + 
+  geom_line(aes(color = Flow)) +
+  expand_limits(y = c(1, 9), x = c(8,23)) +
+  scale_x_continuous(breaks = round(seq(min(KCSWeek$Week), max(KCSWeek$Week), by = 2),1)) +
+  scale_y_continuous(breaks = round(seq(min(1), max(9), by = 1),1)) +
+  theme(legend.position = "none") + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+PA.KCS
+
+PM.KCS <- KCSWeek %>% 
+  filter(Species == "P.meandrina") %>%
+  ggplot(aes(x = Week, y = Score)) + 
+  ggtitle("P. meandrina") + 
+  theme(plot.title = element_text(hjust = 0.5, face = "italic", size = 12)) + 
+  theme(axis.title.x = element_text(size = 11)) + 
+  ylab("KCS") +
+  geom_point(aes(color = Flow, shape = Flow), size = 2.5) + 
+  geom_line(aes(color = Flow)) +
+  expand_limits(y = c(10,18), x = c(8,23)) +
+  scale_x_continuous(breaks = round(seq(min(KCSWeek$Week), max(KCSWeek$Week), by = 2),1)) +
+  scale_y_continuous(breaks = round(seq(min(10), max(18), by = 1),1)) +
+  theme(legend.position = "none") + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+PM.KCS
+```
+
+## Survival change per week - Fig 4c
+```{r, Bleaching Figure c}
+# Actively re-level Flow categories so no auto-ordering confusion in figures
+KCSSurvival$Flow <- factor(KCSSurvival$Flow, levels = c("0 tph", "4 tph", "30 tph", "105 tph", "210 tph"))
+
+MC.Surv <- KCSSurvival %>% 
+  filter(Species == "M.capitata") %>%
+  ggplot(aes(x = Week, y = Percent.Survival)) +
+  ggtitle("M. capitata") + 
+  theme(plot.title = element_text(hjust = 0.5, face = "italic", size = 12)) + 
+  theme(axis.title.x = element_text(size = 11)) + 
+  theme(legend.position = "none") + 
+  ylab("% Survival") +
+  geom_point(aes(color = Flow, shape = Flow), size = 2.5) + 
+  geom_line(aes(color = Flow)) +
+  expand_limits(y = c(0.0,1.0), x = c(8,23)) +
+  scale_x_continuous(breaks = round(seq(min(KCSSurvival$Week), max(KCSSurvival$Week), by = 2),1)) + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+MC.Surv
+
+PA.Surv <- KCSSurvival %>% 
+  filter(Species == "P.acuta") %>%
+  ggplot(aes(x = Week, y = Percent.Survival)) +
+  ggtitle("P. acuta") + 
+  theme(plot.title = element_text(hjust = 0.5, face = "italic", size = 12)) + 
+  theme(axis.title.x = element_text(size = 11)) + 
+  theme(legend.position = "none") + 
+  ylab("% Survival") +
+  geom_point(aes(color = Flow, shape = Flow), size = 2.5) + 
+  geom_line(aes(color = Flow)) +
+  expand_limits(y = c(0.0,1.0), x = c(8,23)) +
+  scale_x_continuous(breaks = round(seq(min(KCSSurvival$Week), max(KCSSurvival$Week), by = 2),1)) + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+PA.Surv
+
+PM.Surv <- KCSSurvival %>% 
+  filter(Species == "P.meandrina") %>%
+  ggplot(aes(x = Week, y = Percent.Survival)) +
+  ggtitle("P. meandrina") + 
+  theme(plot.title = element_text(hjust = 0.5, face = "italic", size = 12)) + 
+  theme(axis.title.x = element_text(size = 11)) + 
+  theme(legend.position = "none") + 
+  ylab("% Survival") +
+  geom_point(aes(color = Flow, shape = Flow), size = 2.5) + 
+  geom_line(aes(color = Flow)) +
+  expand_limits(y = c(0.0,1.0), x = c(8,23)) +
+  scale_x_continuous(breaks = round(seq(min(KCSSurvival$Week), max(KCSSurvival$Week), by = 2),1)) + 
+  scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
+  scale_fill_viridis(discrete = TRUE)
+PM.Surv
+```
+
+## Fig 4abc combined
+```{r, Bleaching Figure Complete}
+# Combine 4b row of score figures
+KCS.by.week <- plot_grid(MC.KCS, PA.KCS, PM.KCS,
+          nrow = 1, ncol = 3,
+          labels = c("B"))
+
+# Combine 4c row of survival figures
+Survival.by.week <- plot_grid(MC.Surv, PA.Surv, PM.Surv,
+          nrow = 1, ncol = 3,
+          labels = c("C"))
+
+# Combine above rows with 4a summary figure
+Bleaching <- plot_grid(Ave.KCS.SampleSize, KCS.by.week, Survival.by.week,
+          nrow = 3, ncol = 1,
+          labels = c("A"),
+          rel_heights = c(0.35, 0.35, 0.35))
+Bleaching
+```
+

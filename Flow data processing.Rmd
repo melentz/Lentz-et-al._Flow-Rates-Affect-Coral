@@ -1,7 +1,7 @@
 ---
-title: "Flow data processing"
-author: "Miranda Lentz and Evan Freel"
-date: March 26, 2023
+title: "Flow data analysis for Lentz et al."
+author: "Code written by: Miranda Lentz and Evan Freel"
+date: March 30, 2023
 output: html_document
 ---
 
@@ -9,7 +9,7 @@ output: html_document
 ##Libraries
 ```{r, Libraries}
 # Defining packages desired
-dependencies <- c("tidyverse","mosaic","openintro","ggformula","infer","gridExtra","cowplot","ggpubr","here","mgcv","Cairo","viridis","readr")
+dependencies <- c("tidyverse","mosaic","openintro","ggformula","infer","gridExtra","cowplot","here","mgcv","Cairo","viridis","readr")
 
 # Checking if packages are installed - load if so, install+load if not
 for (i in dependencies) {
@@ -71,9 +71,21 @@ Flow.bar.2019.Tukey <- ggplot(Flow2019, aes(x = Species, y = Mass.PerInc08, colo
   labs(color="Flow Rate") + 
   scale_color_viridis(discrete = TRUE, option = "D", direction = -1) +
   scale_fill_viridis(discrete = TRUE) + 
-  annotate("text", x = 1.97, y = 19, label = "a", hjust = 0) + 
-  annotate("text", x = 2.12, y = 17.3, label = "b", hjust = 0) + 
-  annotate("text", x = 2.25, y = 12, label = "ab", hjust = 0)
+  annotate("text", x = 0.67, y = 7.2, label = "a", hjust = 0) + 
+  annotate("text", x = 0.81, y = 8.2, label = "a", hjust = 0) + 
+  annotate("text", x = 0.96, y = 11.6, label = "a", hjust = 0) + 
+  annotate("text", x = 1.12, y = 11.3, label = "a", hjust = 0) + 
+  annotate("text", x = 1.27, y = 7.2, label = "a", hjust = 0) + 
+  annotate("text", x = 1.65, y = 12.6, label = "bc", hjust = 0) + 
+  annotate("text", x = 1.80, y = 15.6, label = "bc", hjust = 0) + 
+  annotate("text", x = 1.97, y = 19, label = "b", hjust = 0) + 
+  annotate("text", x = 2.12, y = 17.4, label = "b", hjust = 0) + 
+  annotate("text", x = 2.275, y = 11.7, label = "c", hjust = 0) + 
+  annotate("text", x = 2.675, y = 4.8, label = "d", hjust = 0) + 
+  annotate("text", x = 2.81, y = 8.1, label = "d", hjust = 0) + 
+  annotate("text", x = 2.97, y = 6.4, label = "d", hjust = 0) + 
+  annotate("text", x = 3.12, y = 6, label = "d", hjust = 0) + 
+  annotate("text", x = 3.26, y = 8.6, label = "d", hjust = 0)
 Flow.bar.2019.Tukey
 ```
 
@@ -179,7 +191,8 @@ PM.Col.stdev <- col.PM2019 %>%  ggplot() +
 PM.Col.stdev
 
 # Combine individual species figures into one
-Full.Colony.line <- grid.arrange(MC.Col.stdev, PA.Col.stdev, PM.Col.stdev, ncol=1)
+Full.Colony.line <- grid.arrange(MC.Col.stdev, PA.Col.stdev, PM.Col.stdev, 
+                                 ncol=1)
 Full.Colony.line
 ```
 
